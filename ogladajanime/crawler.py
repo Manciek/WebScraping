@@ -1,6 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin, urlparse, urlunsplit, urlsplit
+from urllib.parse import urljoin, urlunsplit, urlsplit
 import pandas as pd
 
 headers = {
@@ -34,12 +34,20 @@ def StartCrawlingURLS(target, session: requests.Session):
 
         soup = BeautifulSoup(r.text, features='lxml')
         hrefs = [a["href"] for a in soup.find_all("a") if a.get("href")]
-        # Parse urls (normalize them)
+        # Parse urls (normalize them) and add them to the queue
         for url in hrefs:
             joined = urljoin(target_site, url)
             sp = urlsplit(joined)
             clean = urlunsplit((sp.scheme, sp.netloc, sp.path, "", ""))
-            if clean not in result and urlparse(clean).netloc == urlparse(target).netloc:
+            # Remove the number from the link that resembles the number of the episode "base/anime/animeName/{EpNumber}"
+            # urlsplit.path.split("/") would be the anime in a link
+            split_path = urlsplit(clean).path.split("/")
+            if len(split_path) == 4 and split_path[1] == "anime":
+                split_path[3] = ""
+                path = "/".join(split_path)
+                clean = urlunsplit((sp.scheme, sp.netloc, path, "", ""))
+            # Check if clean was checked and is in the site still
+            if clean not in result and urlsplit(clean).netloc == urlsplit(target).netloc:
                 urls.add(clean)
         result.add(target_site)
     return result
